@@ -32,7 +32,7 @@ const DashboardCTitle = ({ title, icon, from, mailCred }) => {
       dispatch(setLoading(true));
       try {
         await axios.post(
-          `http://13.201.226.203:5000/api/v1/supportmail/mailCred`,
+          `http://13.201.189.63:5000/api/v1/supportmail/mailCred`,
           data
         );
         dispatch(setLoading(false));

@@ -6,7 +6,7 @@ const Type4 = ({ topic, minValue = 0, maxValue = 100, unit = "RPM", label = "n/a
   const [value, setValue] = useState(0);
 
   useEffect(() => {
-    const socket = io("http://13.201.226.203:4000", {
+    const socket = io("http://13.201.189.63:4000", {
       // path: "/socket.io/",
       transports: ["websocket"],
       secure: true,
