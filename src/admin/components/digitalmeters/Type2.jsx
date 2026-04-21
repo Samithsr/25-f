@@ -44,7 +44,7 @@ const Type2 = ({
     }
 
     // Create new socket connection
-    socketRef.current = io("http://13.201.189.63:4000", {
+    socketRef.current = io("http://65.0.147.141:4000", {
       transports: ["websocket"],
       secure: true,
       reconnection: true,
