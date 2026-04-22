@@ -86,7 +86,6 @@ const RoutersDom = () => {
           <Route path="/allusers/favorites" element={<Favorite />} />
           <Route path="/allusers/gatewaystat" element={<GatewayStat />} />
           <Route path="/allusers/digitalmeter" element={<DigitalMeter />} />
-          <Route path="/allusers/report/:topic?" element={<Reports />} />
           <Route
             path="/allusers/layoutview/:topic/:layout"
             element={<LayoutView />}

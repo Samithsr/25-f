@@ -3,6 +3,7 @@ import { createChart } from "lightweight-charts";
 import apiClient from "../../../../api/apiClient";
 import io from "socket.io-client";
 
+// Theme configurations
 const themeConfig = {
   light: {
     layout: { backgroundColor: "#ffffff", textColor: "#000000" },
@@ -36,19 +37,6 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
   const socket = useRef(null);
   const TWO_HOURS_IN_SECONDS = 2 * 60 * 60;
 
-  // ✅ New States for validation and toast
-  const [minValue, setMinValue] = useState(-100);
-  const [showToast, setShowToast] = useState(false);
-
-  // ✅ Toast validation logic: enforce negative minValue
-  useEffect(() => {
-    if (minValue >= 0) {
-      setShowToast(true);
-      setMinValue(""); // clear invalid input
-      setTimeout(() => setShowToast(false), 3000);
-    }
-  }, [minValue]);
-
   // Format timestamp to IST
   const formatToIST = (timestamp) => {
     const date = new Date(timestamp);
@@ -61,8 +49,10 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
     });
   };
 
+  // Check if the chart is valid and initialized
   const isChartValid = () => chartRef.current && isChartInitialized.current;
 
+  // Create threshold lines on the chart
   const createThresholdLines = () => {
     if (isChartValid()) {
       thresholdLineSeriesRefs.current.forEach((series) => {
@@ -95,6 +85,7 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
     }
   };
 
+  // Fetch subscription status
   const fetchSubscriptionApi = async () => {
     try {
       const res = await apiClient.get(`/mqtt/is-subscribed?topic=${encodedTopic}`);
@@ -104,6 +95,7 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
     }
   };
 
+  // Fetch thresholds for the topic
   const fetchThresholdApi = async () => {
     try {
       const res = await apiClient.get(`/mqtt/get?topic=${topic}`);
@@ -117,6 +109,7 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
     }
   };
 
+  // Fetch initial data for the chart
   const fetchInitialData = async () => {
     try {
       const response = await apiClient.post("/mqtt/realtime-data/last-2-hours", { topic });
@@ -135,19 +128,25 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
           dataWindow.current = historicalData;
           if (isChartValid()) {
             areaSeriesRef.current.setData(historicalData);
+            // Removed chartRef.current?.timeScale().fitContent() to prevent fitting all data
           }
         } else {
           dataWindow.current = [];
-          if (isChartValid()) areaSeriesRef.current.setData([]);
+          if (isChartValid()) {
+            areaSeriesRef.current.setData([]);
+          }
         }
       }
     } catch (error) {
       console.error("Error fetching initial data:", error);
       dataWindow.current = [];
-      if (isChartValid()) areaSeriesRef.current.setData([]);
+      if (isChartValid()) {
+        areaSeriesRef.current.setData([]);
+      }
     }
   };
 
+  // Update series color based on thresholds
   const updateSeriesColor = (color) => {
     if (isChartValid()) {
       try {
@@ -162,6 +161,7 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
     }
   };
 
+  // Download chart as PNG
   const downloadImage = () => {
     if (chartRef.current) {
       const canvas = chartContainerRef.current.querySelector("canvas");
@@ -175,6 +175,7 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
     }
   };
 
+  // Download data as CSV
   const downloadCSV = () => {
     if (dataWindow.current.length > 0) {
       const csvRows = [];
@@ -200,6 +201,7 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
     }
   };
 
+  // Initialize chart
   useEffect(() => {
     if (!chartRef.current) {
       const theme = isDarkMode ? themeConfig.dark : themeConfig.light;
@@ -216,7 +218,10 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
         },
         priceScale: {
           borderColor: theme.priceScale.borderColor,
-          scaleMargins: { top: 0.1, bottom: 0.1 },
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.1,
+          },
         },
         timeScale: {
           borderColor: theme.timeScale.borderColor,
@@ -242,6 +247,7 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
         }
       };
       window.addEventListener("resize", handleResize);
+
       fetchSubscriptionApi();
       fetchThresholdApi();
       fetchInitialData();
@@ -257,6 +263,7 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
     }
   }, [height, topic]);
 
+  // Update thresholds when they change
   useEffect(() => {
     if (isChartValid()) {
       createThresholdLines();
@@ -264,16 +271,28 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
   }, [thresholds]);
 
   useEffect(() => {
-    socket.current = io("http://13.201.189.63:4000", {
+    socket.current = io("http://3.111.87.2:4000", {
+      // path: "/socket.io/",
       transports: ["websocket"],
       secure: true,
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 5000,
-      upgrade: false,
+      upgrade: false, 
     });
 
+    // socket.current = io("http://localhost:4000", {
+    //   path: "/socket.io/",
+    //   transports: ["websocket"],
+    //   secure: true,
+    //   reconnection: true,
+    //   reconnectionAttempts: 5,
+    //   reconnectionDelay: 5000,
+    //   upgrade: false, 
+    // });
+
     socket.current.emit("subscribeToTopic", topic);
+
     socket.current.on("liveMessage", (data) => {
       if (data.success) {
         const { message, timestamp } = data.message;
@@ -281,9 +300,7 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
           time: Math.floor(new Date(timestamp).getTime() / 1000),
           value: parseFloat(message.message),
         };
-        const defaultColor = isDarkMode
-          ? themeConfig.dark.defaultColor
-          : themeConfig.light.defaultColor;
+        const defaultColor = isDarkMode ? themeConfig.dark.defaultColor : themeConfig.light.defaultColor;
         if (thresholds.length > 0) {
           const sortedThresholds = [...thresholds].sort((a, b) => a.value - b.value);
           let newColor = defaultColor;
@@ -320,6 +337,7 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
     };
   }, [topic, thresholds, isDarkMode]);
 
+  // Update chart theme when Dark Mode changes
   useEffect(() => {
     if (isChartValid()) {
       const theme = isDarkMode ? themeConfig.dark : themeConfig.light;
@@ -332,8 +350,12 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
           vertLines: { color: theme.grid.vertLines },
           horzLines: { color: theme.grid.horzLines },
         },
-        priceScale: { borderColor: theme.priceScale.borderColor },
-        timeScale: { borderColor: theme.timeScale.borderColor },
+        priceScale: {
+          borderColor: theme.priceScale.borderColor,
+        },
+        timeScale: {
+          borderColor: theme.timeScale.borderColor,
+        },
       });
       currentColorRef.current = theme.defaultColor;
       areaSeriesRef.current.applyOptions({
@@ -344,28 +366,7 @@ const SmallGraph = ({ topic, height, viewgraph }) => {
   }, [isDarkMode]);
 
   return (
-    <div style={{ position: "relative" }}>
-      {/* ✅ Toast message for invalid minValue */}
-      {showToast && (
-        <div
-          style={{
-            position: "absolute",
-            top: 10,
-            left: "50%",
-            transform: "translateX(-50%)",
-            backgroundColor: "#ff4d4d",
-            color: "white",
-            padding: "8px 16px",
-            borderRadius: "6px",
-            fontSize: "14px",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-            zIndex: 100,
-          }}
-        >
-          ⚠️ Enter negative values in this field
-        </div>
-      )}
-
+    <div>
       <div
         ref={chartContainerRef}
         style={{

@@ -34,7 +34,7 @@ const LayoutView = () => {
     }
 
   useEffect(() => {
-    const socket = io("http://13.201.189.63:4000", {
+    const socket = io("http://3.111.87.2:4000", {
       // path: "/socket.io/",
       transports: ["websocket"],
       secure: true,
